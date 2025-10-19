@@ -29,7 +29,7 @@
           <van-stepper
             v-model="purchaseQuantity"
             :min="1"
-            :max="app.stock"
+            :max="maxStock"
             button-size="28"
             input-width="60"
           />
@@ -65,7 +65,7 @@
             <template #title>
               <div class="payment-method-item">
                 <van-icon :name="method.icon" size="20" />
-                <span>{{ method.label }}</span>
+                <span>{{ method.name }}</span>
               </div>
             </template>
             <template #right-icon>
@@ -107,10 +107,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import {ref, computed, watch, onMounted} from 'vue'
 import { showDialog } from 'vant'
 import {createAccountOrder} from '@/api/order'
 import CustomPic from '@/components/CustomPic.vue'
+import {getPaymentMethods} from "@/api/payment.js";
 
 const props = defineProps({
   show: {
@@ -130,15 +131,19 @@ const visible = computed({
   set: (value) => emit('update:show', value)
 })
 
+const maxStock = computed(()=>{
+  if (props.app.stock >= 3){
+    return 3
+  }else{
+    return props.app.stock
+  }
+})
 const purchaseQuantity = ref(1)
-const paymentMethod = ref('wechat')
+const paymentMethod = ref('')
 const agreedToTerms = ref(false)
+const paymentMethods = ref([]) // 支付方式
 
-// 支付方式
-const paymentMethods = [
-  { label: '微信支付', value: 'wechat', icon: 'wechat-pay' },
-  { label: '支付宝', value: 'alipay', icon: 'alipay' },
-]
+
 
 // 最终价格
 const finalPrice = computed(() => {
@@ -169,12 +174,16 @@ const handleConfirm = async () => {
       amount: finalPrice.value,
       paymentMethod: paymentMethod.value
     }
-
     const res = await createAccountOrder(orderData)
-
-    emit('confirm', {
-      orderId: res.data.orderId,
-      ...orderData
+    if(res.code === 0){
+      emit('confirm', {
+        orderId: res.data.orderId,
+        ...orderData
+      })
+      return
+    }
+    await showDialog({
+      message: res.msg || '创建订单失败'
     })
   } catch (error) {
     await showDialog({
@@ -192,6 +201,19 @@ const showTerms = () => {
   })
 }
 
+const loadPayments = async ()=>{
+  let resp = await getPaymentMethods()
+  if(resp.code === 0){
+    paymentMethods.value = resp.data
+    return
+  }
+  await showDialog({
+    message: resp.msg
+  })
+}
+onMounted(() => {
+  loadPayments()
+})
 // 重置表单
 watch(() => props.show, (newVal) => {
   if (newVal) {

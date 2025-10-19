@@ -35,7 +35,10 @@ import {
   Icon,
   Stepper,
   RadioGroup, Radio,
-  Progress
+  Progress,
+  Collapse,
+  CollapseItem,
+  Picker
 } from 'vant'
 import 'vant/lib/index.css'
 
@@ -85,6 +88,9 @@ app.use(Button)
   .use(Tab)
   .use(Tabs)
   .use(Progress)
+  .use(Collapse)
+  .use(CollapseItem)
+  .use(Picker)
 
 
 app.use(store)

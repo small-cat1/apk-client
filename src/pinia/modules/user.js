@@ -15,7 +15,8 @@ export const useUserStore = defineStore('user', () => {
     account_status: 1,
     referral_code:"",
     last_login_at:"",
-    last_login_ip:""
+    last_login_ip:"",
+    memberships:[]
   })
   const token = useStorage('token', '')
   const currentToken = computed(() => token.value || '')
@@ -47,18 +48,16 @@ export const useUserStore = defineStore('user', () => {
         forbidClick: true,
       })
       const res = await login(loginInfo)
-      if (res.code !== 0) {
-        showFailToast('登录失败,'+res.msg)
-        return false
+      if (res.code === 0) {
+        // 登陆成功，设置用户信息和权限相关信息
+        setUserInfo(res.data.user)
+        setToken(res.data.token)
       }
-      // 登陆成功，设置用户信息和权限相关信息
-      setUserInfo(res.data.user)
-      setToken(res.data.token)
+      return res
       // 全部操作均结束，关闭loading并返回
-      return true
     } catch (error) {
       console.error('LoginIn error:', error)
-      return false
+      showFailToast("登录失败,"+error)
     } finally {
       loadingInstance.value?.close()
     }

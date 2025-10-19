@@ -5,7 +5,7 @@ import service from '@/utils/request'
  */
 export function createAccountOrder(data) {
   return service({
-    url: '/api/order/account',
+    url: '/order/account',
     method: 'post',
     data
   })
@@ -16,7 +16,7 @@ export function createAccountOrder(data) {
  */
 export function createMembershipOrder(data) {
   return service({
-    url: '/api/order/membership',
+    url: '/order/membership',
     method: 'post',
     data
   })
@@ -28,7 +28,7 @@ export function createMembershipOrder(data) {
  */
 export function getOrderList(params) {
   return service({
-    url: '/api/order/list',
+    url: '/order/list',
     method: 'get',
     params
   })

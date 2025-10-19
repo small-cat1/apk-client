@@ -308,15 +308,16 @@ const handleLogin = async () => {
     captcha: loginForm.captcha,
     captchaKey: captchaKey.value
   })
-  if(resp){
+  if(resp.code !== 0){
+    loginLoading.value = false
+    showFailToast("登录失败,"+resp.msg)
+    refreshCaptcha() // 登录失败后刷新验证码
+  }else{
     loginLoading.value = false
     showSuccessToast('登录成功')
     emit('success')
     // 🎯 触发全局事件（不带上下文，由各组件自己判断）
     emitter.emit('auth-success')
-  }else{
-    loginLoading.value = false
-    refreshCaptcha() // 登录失败后刷新验证码
   }
 }
 

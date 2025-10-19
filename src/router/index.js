@@ -67,15 +67,6 @@ const routes = [
       showTabbar: true
     } // 个人中心页面本身不需要登录，页面内部按钮判断
   },
-  {
-    path: '/app/:id',
-    name: 'AppDetail',
-    component: () => import('@/views/AppDetail.vue'),
-    meta: {
-      requiresAuth: false,
-    showTabbar: true
-    }
-  },
   // ===== 以下页面需要登录 =====
   {
     path: '/vip',
@@ -137,6 +128,56 @@ const routes = [
       title: '关于我们',
       showTabbar: false
     }
+  },
+
+  {
+    path: '/commissionPage',
+    name: 'CommissionPage',
+    component: () => import('@/views/CommissionPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/subordinateList',
+    name: 'SubordinateList',
+    component: () => import('@/views/SubordinateList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/commissionDetail',
+    name: 'CommissionDetail',
+    component: () => import('@/views/CommissionDetail.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/withdraw',
+    name: 'Withdraw',
+    component: () => import('@/views/Withdraw.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/withdrawRecord',
+    name: 'WithdrawRecord',
+    component: () => import('@/views/WithdrawRecord.vue'),
+    meta: { requiresAuth: true }
+  },
+
+  {
+    path: '/announcementList',
+    name: 'AnnouncementList',
+    component: () => import('@/views/AnnouncementList.vue'),
+    meta: { requiresAuth: false, title: '系统公告' }
+  },
+  {
+    path: '/announcementDetail',
+    name: 'AnnouncementDetail',
+    component: () => import('@/views/AnnouncementDetail.vue'),
+    meta: { requiresAuth: false, title: '公告详情' }
+  },
+  {
+    path: '/commissionRules',
+    name: 'CommissionRules',
+    component: () => import('@/views/CommissionRules.vue'),
+    meta: { requiresAuth: true, title: '分佣规则' }
   },
   {
     path: '/:pathMatch(.*)*',  // ✅ 注意是 pathMatch

@@ -42,11 +42,11 @@ import { useRoute, useRouter } from 'vue-router'  // ✅ 新增 useRouter
 import ErrorView from '@/components/Error.vue'
 import AuthModal from '@/components/AuthModal.vue'
 import CustomerService from '@/components/CustomerService.vue' // 🎯 引入客服组件
-
 import {emitter} from "@/utils/bus.js";
 
 const route = useRoute()  // ✅ 改名为 route，以示区别
 const router = useRouter()  // ✅ 新增 router 实例
+
 const showAuthModal = ref(false)
 const loginContext = ref(null) // 🎯 保存登录上下文
 const customerServiceRef = ref(null)
@@ -55,6 +55,7 @@ const customerServiceRef = ref(null)
 const showTabbar = computed(() => {
   return route.meta?.showTabbar !== false
 })
+
 
 
 // 监听全局登录事件
@@ -101,4 +102,5 @@ onUnmounted(() => {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
 </style>
