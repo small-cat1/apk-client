@@ -47,9 +47,6 @@ const props = defineProps({
 const emit = defineEmits(['download'])
 const router = useRouter()
 
-const goToDetail = () => {
-  router.push(`/app/${props.app.id}`)
-}
 
 const handleDownload = (event) => {
   event.stopPropagation() // 阻止冒泡，避免触发卡片点击

@@ -154,12 +154,6 @@ const finalPrice = computed(() => {
 // 关闭前确认
 const handleBeforeClose = (action) => {
   if (action === 'confirm') {
-    // if (!agreedToTerms.value) {
-    //   showDialog({
-    //     message: '请先阅读并同意购买服务协议'
-    //   })
-    //   return false
-    // }
     return true
   }
   return true
@@ -192,14 +186,7 @@ const handleConfirm = async () => {
   }
 }
 
-// 查看协议
-const showTerms = () => {
-  showDialog({
-    title: '购买服务协议',
-    message: '这里是购买服务协议的内容...',
-    confirmButtonText: '我知道了'
-  })
-}
+
 
 const loadPayments = async ()=>{
   let resp = await getPaymentMethods()
@@ -211,15 +198,16 @@ const loadPayments = async ()=>{
     message: resp.msg
   })
 }
-onMounted(() => {
-  loadPayments()
-})
-// 重置表单
-watch(() => props.show, (newVal) => {
+
+// 监听弹窗打开/关闭
+watch(() => props.show, async (newVal) => {
   if (newVal) {
+    // 弹窗打开时重置数据并加载支付方式
     purchaseQuantity.value = 1
-    paymentMethod.value = 'wechat'
+    paymentMethod.value = ''
     agreedToTerms.value = false
+    // 加载支付方式
+    await loadPayments()
   }
 })
 </script>

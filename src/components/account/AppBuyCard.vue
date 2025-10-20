@@ -47,7 +47,6 @@
             <span class="currency">¥</span>
             <span class="amount">{{ app.account_price }}</span>
           </div>
-<!--          <div class="price-period">{{ app.price_unit || '/月' }}</div>-->
           <div class="original-price" v-if="app.original_price">
             ¥{{ app.original_price }}
           </div>
