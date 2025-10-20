@@ -69,16 +69,6 @@ const routes = [
   },
   // ===== 以下页面需要登录 =====
   {
-    path: '/vip',
-    name: 'Vip',
-    component: () => import('@/views/Vip.vue'),
-    meta: {
-      requiresAuth: true,
-      title: 'VIP会员',
-      showTabbar: true
-    }
-  },
-  {
     path: '/userMemberships',
     name: 'UserMemberships',
     component: () => import('@/views/userMemberships.vue'),
