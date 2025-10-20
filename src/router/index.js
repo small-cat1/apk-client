@@ -100,16 +100,6 @@ const routes = [
     }
   },
   {
-    path: '/feedback',
-    name: 'Feedback',
-    component: () => import('@/views/Feedback.vue'),
-    meta: {
-      requiresAuth: true,
-      title: '意见反馈',
-      showTabbar: false
-    }
-  },
-  {
     path: '/about',
     name: 'About',
     component: () => import('@/views/About.vue'),
