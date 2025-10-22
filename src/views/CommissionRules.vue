@@ -6,47 +6,9 @@
       fixed
       @click-left="router.back()"
     >
-      <template #right>
-        <van-icon
-          v-if="isAdmin"
-          name="edit"
-          @click="showEditPopup = true"
-        />
-      </template>
     </van-nav-bar>
 
     <div class="content" style="padding-top: 46px;">
-      <!-- 当前规则 -->
-      <div class="current-rule-card">
-        <div class="rule-header">
-          <van-icon name="award-o" size="24" color="#ff6b35" />
-          <span>当前分佣规则</span>
-        </div>
-
-        <div class="rule-content">
-          <div class="rule-item">
-            <span class="rule-label">基础分佣比例</span>
-            <span class="rule-value">{{ rules.basicRate }}%</span>
-          </div>
-          <div class="rule-item">
-            <span class="rule-label">最低提现金额</span>
-            <span class="rule-value">¥{{ rules.minWithdraw }}</span>
-          </div>
-          <div class="rule-item">
-            <span class="rule-label">单次最高提现</span>
-            <span class="rule-value">¥{{ rules.maxWithdraw }}</span>
-          </div>
-          <div class="rule-item">
-            <span class="rule-label">每日提现次数</span>
-            <span class="rule-value">{{ rules.dailyWithdrawCount }}次</span>
-          </div>
-          <div class="rule-item">
-            <span class="rule-label">分佣结算周期</span>
-            <span class="rule-value">{{ rules.settlementCycle }}</span>
-          </div>
-        </div>
-      </div>
-
       <!-- 阶梯分佣 -->
       <div class="tier-section">
         <van-cell-group inset>
@@ -88,7 +50,7 @@
             <div class="desc-item">
               <div class="desc-title">1. 分佣计算方式</div>
               <div class="desc-text">
-                当下级用户消费时，您将获得订单金额的 {{ rules.basicRate }}% 作为佣金。例如：下级消费100元，您可获得{{ rules.basicRate }}元佣金。
+                当下级用户消费时，您将获得订单金额*分佣比例的金额作为佣金。例如：您当前是{{rules.tiers[0].name}},下级消费100元，您可获得{{ 100*rules.tiers[0].rate/100 }}元佣金。
               </div>
             </div>
 
@@ -120,111 +82,6 @@
       </div>
     </div>
 
-    <!-- 编辑规则弹窗（仅管理员可见） -->
-    <van-popup v-model:show="showEditPopup" position="bottom" :style="{ height: '80%' }">
-      <div class="edit-popup">
-        <van-nav-bar
-          title="编辑分佣规则"
-          left-text="取消"
-          right-text="保存"
-          @click-left="showEditPopup = false"
-          @click-right="saveRules"
-        />
-
-        <div class="edit-content">
-          <van-form>
-            <van-cell-group inset>
-              <van-field
-                v-model="editRules.basicRate"
-                type="number"
-                label="基础分佣比例"
-                placeholder="请输入比例"
-                right-icon="%"
-              />
-              <van-field
-                v-model="editRules.minWithdraw"
-                type="number"
-                label="最低提现金额"
-                placeholder="请输入金额"
-                left-icon="balance-o"
-              />
-              <van-field
-                v-model="editRules.maxWithdraw"
-                type="number"
-                label="单次最高提现"
-                placeholder="请输入金额"
-                left-icon="balance-o"
-              />
-              <van-field
-                v-model="editRules.dailyWithdrawCount"
-                type="number"
-                label="每日提现次数"
-                placeholder="请输入次数"
-              />
-              <van-field
-                v-model="editRules.settlementCycle"
-                label="结算周期"
-                placeholder="例如：订单完成后立即结算"
-              />
-            </van-cell-group>
-
-            <!-- 阶梯规则编辑 -->
-            <van-cell-group inset style="margin-top: 12px;">
-              <div class="edit-section-title">阶梯分佣规则</div>
-
-              <div
-                v-for="(tier, index) in editRules.tiers"
-                :key="index"
-                class="edit-tier-item"
-              >
-                <div class="edit-tier-header">
-                  <span>等级 {{ index + 1 }}</span>
-                  <van-button
-                    v-if="editRules.tiers.length > 1"
-                    size="mini"
-                    type="danger"
-                    plain
-                    @click="removeTier(index)"
-                  >
-                    删除
-                  </van-button>
-                </div>
-
-                <van-field
-                  v-model="tier.name"
-                  label="等级名称"
-                  placeholder="例如：青铜推广员"
-                />
-                <van-field
-                  v-model="tier.minSubordinates"
-                  type="number"
-                  label="最低下级数"
-                  placeholder="达到此人数可享受该比例"
-                />
-                <van-field
-                  v-model="tier.rate"
-                  type="number"
-                  label="分佣比例"
-                  placeholder="请输入比例"
-                  right-icon="%"
-                />
-              </div>
-
-              <van-button
-                block
-                plain
-                type="primary"
-                icon="plus"
-                style="margin: 12px 0;"
-                @click="addTier"
-              >
-                添加阶梯
-              </van-button>
-            </van-cell-group>
-          </van-form>
-        </div>
-      </div>
-    </van-popup>
   </div>
 </template>
 
@@ -232,143 +89,33 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/pinia'
-import { showToast, showDialog } from 'vant'
+import {showToast, showDialog, showFailToast} from 'vant'
+import {getCommissionRules} from "@/api/commissionRules.js";
 
 const router = useRouter()
 const userStore = useUserStore()
 
-// 判断是否是管理员
-const isAdmin = computed(() => {
-  return userStore.userInfo?.role === 'admin' || userStore.userInfo?.isAdmin
-})
 
-const showEditPopup = ref(false)
 
 // 当前规则
-const rules = ref({
-  basicRate: 10,
-  minWithdraw: 10,
-  maxWithdraw: 5000,
-  dailyWithdrawCount: 3,
-  settlementCycle: '订单完成后立即结算',
-  tiers: [
-    { name: '青铜推广员', minSubordinates: 0, rate: 10 },
-    { name: '白银推广员', minSubordinates: 10, rate: 12 },
-    { name: '黄金推广员', minSubordinates: 30, rate: 15 },
-    { name: '铂金推广员', minSubordinates: 50, rate: 18 },
-    { name: '钻石推广员', minSubordinates: 100, rate: 20 }
-  ]
-})
+const rules = ref({})
 
-// 编辑中的规则
-const editRules = ref({
-  basicRate: '',
-  minWithdraw: '',
-  maxWithdraw: '',
-  dailyWithdrawCount: '',
-  settlementCycle: '',
-  tiers: []
-})
+
 
 // 获取规则
 const fetchRules = async () => {
   try {
     // TODO: 调用后端API
-    // const res = await api.getCommissionRules()
-    // rules.value = res.data
-
+    const res = await getCommissionRules()
+    if(res.code !== 0){
+      showFailToast(res.msg || '获取规则失败')
+      return
+    }
+    rules.value = res.data
     // 示例数据已在上面定义
   } catch (error) {
     console.error('获取规则失败:', error)
     showToast('获取规则失败')
-  }
-}
-
-// 打开编辑弹窗时复制当前规则
-const openEditPopup = () => {
-  editRules.value = JSON.parse(JSON.stringify(rules.value))
-  showEditPopup.value = true
-}
-
-// 添加阶梯
-const addTier = () => {
-  editRules.value.tiers.push({
-    name: '',
-    minSubordinates: 0,
-    rate: 0
-  })
-}
-
-// 删除阶梯
-const removeTier = (index) => {
-  showDialog({
-    title: '确认删除',
-    message: '确定要删除这个阶梯吗？'
-  }).then(() => {
-    editRules.value.tiers.splice(index, 1)
-  }).catch(() => {
-    // 取消
-  })
-}
-
-// 保存规则
-const saveRules = async () => {
-  // 验证
-  if (!editRules.value.basicRate || editRules.value.basicRate <= 0) {
-    showToast('请输入正确的基础分佣比例')
-    return
-  }
-
-  if (!editRules.value.minWithdraw || editRules.value.minWithdraw <= 0) {
-    showToast('请输入正确的最低提现金额')
-    return
-  }
-
-  if (!editRules.value.maxWithdraw || editRules.value.maxWithdraw <= 0) {
-    showToast('请输入正确的最高提现金额')
-    return
-  }
-
-  if (parseFloat(editRules.value.minWithdraw) > parseFloat(editRules.value.maxWithdraw)) {
-    showToast('最低提现金额不能大于最高提现金额')
-    return
-  }
-
-  // 验证阶梯规则
-  for (let i = 0; i < editRules.value.tiers.length; i++) {
-    const tier = editRules.value.tiers[i]
-    if (!tier.name) {
-      showToast(`请输入第${i + 1}个阶梯的名称`)
-      return
-    }
-    if (!tier.minSubordinates && tier.minSubordinates !== 0) {
-      showToast(`请输入第${i + 1}个阶梯的最低下级数`)
-      return
-    }
-    if (!tier.rate || tier.rate <= 0) {
-      showToast(`请输入第${i + 1}个阶梯的分佣比例`)
-      return
-    }
-  }
-
-  // 按最低下级数排序
-  editRules.value.tiers.sort((a, b) => a.minSubordinates - b.minSubordinates)
-
-  try {
-    // TODO: 调用后端API
-    // await api.updateCommissionRules(editRules.value)
-
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    rules.value = JSON.parse(JSON.stringify(editRules.value))
-    showEditPopup.value = false
-    showToast({
-      message: '保存成功',
-      type: 'success'
-    })
-  } catch (error) {
-    console.error('保存失败:', error)
-    showToast('保存失败，请重试')
   }
 }
 
