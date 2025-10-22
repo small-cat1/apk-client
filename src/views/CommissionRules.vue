@@ -50,7 +50,7 @@
             <div class="desc-item">
               <div class="desc-title">1. 分佣计算方式</div>
               <div class="desc-text">
-                当下级用户消费时，您将获得订单金额*分佣比例的金额作为佣金。例如：您当前是{{rules.tiers[0].name}},下级消费100元，您可获得{{ 100*rules.tiers[0].rate/100 }}元佣金。
+                当下级用户消费时，您将获得订单金额*分佣比例的金额作为佣金。例如：您当前是{{currentRuleTiers.name}},下级消费100元，您可获得{{ 100*currentRuleTiers.rate/100 }}元佣金。
               </div>
             </div>
 
@@ -100,7 +100,7 @@ const userStore = useUserStore()
 // 当前规则
 const rules = ref({})
 
-
+const currentRuleTiers = ref({})
 
 // 获取规则
 const fetchRules = async () => {
@@ -112,6 +112,9 @@ const fetchRules = async () => {
       return
     }
     rules.value = res.data
+    if(res.data.tiers.length > 0){
+      currentRuleTiers.value = res.data.tiers[0]
+    }
     // 示例数据已在上面定义
   } catch (error) {
     console.error('获取规则失败:', error)
@@ -140,53 +143,7 @@ onMounted(() => {
   padding: 12px 0 60px 0;
 }
 
-/* 当前规则卡片 */
-.current-rule-card {
-  margin: 12px;
-  padding: 16px;
-  background: linear-gradient(135deg, #fff9f0, #fff);
-  border-radius: 12px;
-  border: 2px solid #ff6b35;
-}
 
-.rule-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  color: #323233;
-  margin-bottom: 16px;
-}
-
-.rule-content {
-  background: white;
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.rule-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.rule-item:last-child {
-  border-bottom: none;
-}
-
-.rule-label {
-  font-size: 14px;
-  color: #646566;
-}
-
-.rule-value {
-  font-size: 15px;
-  font-weight: bold;
-  color: #ff6b35;
-}
 
 /* 阶梯分佣 */
 .tier-section {
@@ -276,39 +233,4 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-/* 编辑弹窗 */
-.edit-popup {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.edit-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 0;
-}
-
-.edit-section-title {
-  padding: 16px;
-  font-size: 15px;
-  font-weight: bold;
-  color: #323233;
-}
-
-.edit-tier-item {
-  padding: 12px;
-  margin: 0 16px 12px 16px;
-  background: #f7f8fa;
-  border-radius: 8px;
-}
-
-.edit-tier-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  font-weight: bold;
-  color: #323233;
-}
 </style>
