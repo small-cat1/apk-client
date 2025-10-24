@@ -70,7 +70,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showToast } from 'vant'
-import {getAnnouncementDetail} from "@/api/announcement.js"
+import {getAnnouncementDetail, markAnnouncementAsRead} from "@/api/announcement.js"
+import { debounce } from 'lodash-es' // 或自己实现
 
 const router = useRouter()
 const route = useRoute()
@@ -82,21 +83,21 @@ const fetchDetail = async () => {
   try {
     loading.value = true
     const id = route.query.id
-
     if (!id) {
       showToast('公告ID不存在')
       loading.value = false
       return
     }
-
-    // 调用后端API
-    const res = await getAnnouncementDetail({ id })
-    announcement.value = res.data || res
-
-    // 标记已读
-    if (announcement.value) {
-      markAsRead(id)
+    const resp = await getAnnouncementDetail({ id })
+    if(resp.code === 0){
+      announcement.value = resp.data
+      // 标记已读
+      if (announcement.value) {
+        await markAsRead(id)
+      }
+      return
     }
+    showToast('获取详情失败,'+resp.msg)
   } catch (error) {
     console.error('获取详情失败:', error)
     showToast('加载失败')
@@ -106,14 +107,16 @@ const fetchDetail = async () => {
   }
 }
 
-const markAsRead = async (id) => {
+const markAsRead = debounce(async (id) => {
   try {
-    // TODO: 如果有标记已读的API，在这里调用
-    // await markAnnouncementAsRead({ id })
+    const resp = await markAnnouncementAsRead({
+      announcement_id: parseInt(id)
+    })
+    console.log(resp)
   } catch (error) {
     console.error('标记已读失败:', error)
   }
-}
+},500)
 
 const getTypeText = (type) => {
   const map = {

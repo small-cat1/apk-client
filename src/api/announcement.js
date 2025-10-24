@@ -17,3 +17,13 @@ export const getAnnouncementDetail = (params) => {
     params
   })
 }
+
+// 标记公告为已读
+export function markAnnouncementAsRead(data) {
+  return service({
+    url: '/announcement/mark-read',
+    method: 'post',
+    data
+  })
+}
+

@@ -36,7 +36,7 @@
                   <div class="type-badge" :class="`type-${item.type}`">
                     {{ getTypeText(item.type) }}
                   </div>
-                  <van-badge dot v-if="!item.isRead" />
+                  <van-badge dot v-if="!item.is_read" />
                 </div>
                 <div class="item-time">{{ formatTime(item.created_at) }}</div>
               </div>

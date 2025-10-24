@@ -11,9 +11,9 @@
       <!-- 可提现金额 -->
       <div class="balance-card">
         <div class="balance-label">可提现金额（元）</div>
-        <div class="balance-amount">{{ availableAmount.toFixed(2) }}</div>
+        <div class="balance-amount">{{ userInfo.commissionSimple.available_amount.toFixed(2) }}</div>
         <div class="balance-tip">
-          最低提现 ¥{{ minWithdrawAmount }}，最高单次提现 ¥{{ maxWithdrawAmount }}
+          最低提现 ¥{{ withdrawConfig.minWithdraw }}，最高单次提现 ¥{{ withdrawConfig.maxWithdraw }}
         </div>
       </div>
 
@@ -47,7 +47,7 @@
             readonly
             required
             is-link
-            @click="showWithdrawTypePicker = true"
+            @click="openWithdrawTypePicker"
           />
         </van-cell-group>
 
@@ -146,22 +146,37 @@
       <van-picker
         :columns="withdrawTypeColumns"
         @confirm="onWithdrawTypeConfirm"
-        @cancel="showWithdrawTypePicker = false"
+        @cancel="closeWithdrawTypePicker"
       />
     </van-popup>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import {ref, computed, onMounted} from 'vue'
 import { useRouter } from 'vue-router'
-import { showDialog, showToast } from 'vant'
-
+import {showDialog, showFailToast, showLoadingToast, showToast} from 'vant'
+import {useUserStore} from "@/pinia";
+import {getWithdrawConfig, userWithdraw} from "@/api/withdraw"
 const router = useRouter()
+const userStore = useUserStore()
 
-const availableAmount = ref(158.50)
-const minWithdrawAmount = ref(10)
-const maxWithdrawAmount = ref(5000)
+const userInfo = userStore.userInfo
+const minWithdrawAmount = computed(() => withdrawConfig.value?.minWithdraw || 0)
+const maxWithdrawAmount = computed(() => withdrawConfig.value?.maxWithdraw || 0)
+
+// 提现配置
+const withdrawConfig = ref({
+  minWithdraw: 0,
+  maxWithdraw: 0,
+  dailyWithdrawCount: 0,
+  withdrawMethods: [],
+  settlementCycle: '',
+  withdrawFee: 0,
+  withdrawProcessDays: ''
+})
+
+const configLoading = ref(false)
 
 const formData = ref({
   amount: '',
@@ -177,15 +192,36 @@ const formData = ref({
 
 const submitting = ref(false)
 const showWithdrawTypePicker = ref(false)
-
-const withdrawTypeColumns = [
+// 所有提现方式
+const allWithdrawTypes = [
   { text: '支付宝', value: 'alipay' },
   { text: '微信', value: 'wechat' },
   { text: '银行卡', value: 'bank' }
 ]
+const withdrawTypeColumns = computed(() => {
+  if (!withdrawConfig.value || !withdrawConfig.value.withdrawMethods) {
+    return []
+  }
+  return allWithdrawTypes.filter(item =>
+    withdrawConfig.value.withdrawMethods.includes(item.value)
+  )
+})
+
+// 添加打开函数
+const openWithdrawTypePicker = () => {
+  if (withdrawTypeColumns.value.length === 0) {
+    showToast('暂无可用的提现方式')
+    return
+  }
+  showWithdrawTypePicker.value = true
+}
+
+const closeWithdrawTypePicker = () => {
+  showWithdrawTypePicker.value = false
+}
 
 const withdrawTypeText = computed(() => {
-  const type = withdrawTypeColumns.find(item => item.value === formData.value.withdrawType)
+  const type = withdrawTypeColumns.value.find(item => item.value === formData.value.withdrawType)
   return type ? type.text : ''
 })
 
@@ -202,7 +238,7 @@ const validateAmount = (val) => {
     showToast(`单次最高提现金额为 ¥${maxWithdrawAmount.value}`)
     return false
   }
-  if (amount > availableAmount.value) {
+  if (amount > userInfo.commissionSimple.available_amount) {
     showToast('提现金额不能大于可提现金额')
     return false
   }
@@ -210,16 +246,30 @@ const validateAmount = (val) => {
 }
 
 const setAllAmount = () => {
-  if (availableAmount.value > maxWithdrawAmount.value) {
+  let available_amount = userInfo.commissionSimple.available_amount
+  if (available_amount > maxWithdrawAmount.value) {
     formData.value.amount = maxWithdrawAmount.value.toString()
     showToast(`已设置为最大提现金额 ¥${maxWithdrawAmount.value}`)
   } else {
-    formData.value.amount = availableAmount.value.toString()
+    formData.value.amount =available_amount.toString()
   }
 }
 
-const onWithdrawTypeConfirm = ({ selectedValues }) => {
-  formData.value.withdrawType = selectedValues[0]
+// 修复：Vant 4 的 Picker 组件 confirm 事件参数格式
+const onWithdrawTypeConfirm = (value) => {
+  const selectedType = value.selectedValues[0]
+
+  // 切换提现方式时清理之前填写的数据
+  formData.value.alipayAccount = ''
+  formData.value.alipayName = ''
+  formData.value.wechatAccount = ''
+  formData.value.wechatName = ''
+  formData.value.bankName = ''
+  formData.value.bankAccount = ''
+  formData.value.bankHolder = ''
+
+  // 设置新的提现方式
+  formData.value.withdrawType = selectedType
   showWithdrawTypePicker.value = false
 }
 
@@ -236,20 +286,18 @@ const onSubmit = async () => {
   }).then(async () => {
     try {
       submitting.value = true
-
-      // TODO: 调用API
-      // await api.submitWithdraw(formData.value)
-
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      showToast({
-        message: '提现申请已提交',
-        type: 'success'
-      })
-
-      setTimeout(() => {
-        router.back()
-      }, 1500)
+      let resp = await userWithdraw(formData.value)
+      if (resp.code === 0){
+          showToast({
+            message: '提现申请已提交',
+            type: 'success'
+          })
+          setTimeout(() => {
+            window.location.reload()
+          }, 1500)
+        return
+      }
+      showFailToast(resp.msg || "提现申请失败")
     } catch (error) {
       console.error('提现失败:', error)
       showToast('提现申请失败，请重试')
@@ -260,6 +308,35 @@ const onSubmit = async () => {
     // 取消
   })
 }
+// 获取提现配置
+const loadWithdrawConfig = async () => {
+  configLoading.value = true
+  const toast = showLoadingToast({
+    message: '加载配置中...',
+    forbidClick: true,
+    duration: 0
+  })
+
+  try {
+    const res = await getWithdrawConfig()
+    if (res.code === 0 && res.data) {
+      withdrawConfig.value = {...res.data }
+      // minWithdrawAmount.value = res.data.minWithdraw || 10
+      // maxWithdrawAmount.value = res.data.maxWithdraw || 5000
+    }
+  } catch (error) {
+    console.error('获取提现配置失败:', error)
+    showToast('获取配置失败，使用默认配置')
+  } finally {
+    configLoading.value = false
+    toast.close()
+  }
+}
+
+// 3. 页面加载时获取配置
+onMounted(() => {
+  loadWithdrawConfig()
+})
 </script>
 
 <style scoped>

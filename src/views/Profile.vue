@@ -157,7 +157,7 @@
             @click="goToWithdraw"
           >
             <template #value>
-              <span style="color: #07c160;">¥{{ commissionData.availableAmount.toFixed(2) }}</span>
+              <span style="color: #07c160;">¥{{ userInfo.commissionSimple.available_amount.toFixed(2) }}</span>
             </template>
           </van-cell>
 
@@ -265,7 +265,6 @@ const minWithdrawAmount = ref(10)
 
 // 分佣数据
 const commissionData = ref({
-  availableAmount: 0,
   totalEarnings: 0,
   withdrawnAmount: 0,
   frozenAmount: 0
@@ -473,7 +472,8 @@ const goToCommissionPage = () => {
 
 // 去提现页面
 const goToWithdraw = () => {
-  if (commissionData.value.availableAmount < minWithdrawAmount.value) {
+  let commissionSimple = userInfo.value.commissionSimple
+  if (commissionSimple.available_amount < minWithdrawAmount.value) {
     showToast(`最低提现金额为 ¥${minWithdrawAmount.value}`)
     return
   }
