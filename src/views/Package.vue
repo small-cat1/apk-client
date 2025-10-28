@@ -46,7 +46,7 @@
           </div>
         </div>
 
-        <!-- 套餐选择 - 动态渲染 -->
+        <!-- 套餐选择 - 优化后的版本 -->
         <div class="section packages-section">
           <div class="section-header">
             <h2 class="section-title">选择套餐</h2>
@@ -58,59 +58,94 @@
             加载中...
           </van-loading>
 
-          <!-- 套餐网格 -->
-          <div v-else-if="packages.length > 0" class="packages-grid" :style="gridStyle">
+          <!-- 套餐列表 - 改为垂直卡片布局（更适合展示描述） -->
+          <div v-else-if="packages.length > 0" class="packages-list">
             <div
               v-for="pkg in packages"
               :key="pkg.id"
-              class="package-card"
+              class="package-item"
               :class="{
                 active: selectedPackage === pkg.id,
                 recommended: pkg.is_featured
               }"
               @click="selectPackage(pkg)"
             >
-              <!-- 推荐角标 -->
-              <div class="card-corner" v-if="pkg.is_featured">
-                <span>推荐</span>
+              <!-- 推荐标签 -->
+              <div class="item-badge" v-if="pkg.is_featured">
+                <van-icon name="medal-o" size="12" />
+                推荐
               </div>
 
-              <!-- 套餐名称 -->
-              <div class="package-name">{{ pkg.plan_name }}</div>
-
-              <!-- 套餐时长 -->
-              <div class="package-duration">
-                {{ formatDuration(pkg.duration_days) }}
+              <!-- 终身标签 -->
+              <div class="lifetime-badge" v-if="pkg.plan_type === 'lifetime'">
+                <van-icon name="clock-o" size="12" />
+                永久有效
               </div>
 
-              <!-- 价格信息 -->
-              <div class="package-pricing">
-                <div class="price-main">
-                  <span class="currency">¥</span>
-                  <span class="amount">{{ pkg.final_price }}</span>
+              <div class="item-header">
+                <!-- 左侧信息 -->
+                <div class="item-info">
+                  <h3 class="item-name">{{ pkg.plan_name }}</h3>
+                  <div class="item-duration">
+                    <van-icon name="clock-o" size="14" />
+                    {{ formatDuration(pkg) }}
+                  </div>
+
+                  <!-- 套餐描述 - 新增 -->
+                  <div class="item-description" v-if="pkg.description">
+                    <div
+                      v-for="(line, index) in pkg.description.split('\n')"
+                      :key="index"
+                      class="desc-line"
+                    >
+                      <van-icon name="success" size="12" color="#07c160" />
+                      <span>{{ line }}</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="price-original" v-if="pkg.base_price !== pkg.final_price">
-                  ¥{{ pkg.base_price }}
+
+                <!-- 右侧价格 -->
+                <div class="item-pricing">
+                  <div class="price-main">
+                    <span class="currency">¥</span>
+                    <span class="amount">{{ pkg.final_price }}</span>
+                  </div>
+                  <div class="price-original" v-if="pkg.base_price !== pkg.final_price">
+                    ¥{{ pkg.base_price }}
+                  </div>
+
+                  <!-- 平均价格 - 只在非终身套餐显示 -->
+                  <div class="price-average" v-if="pkg.plan_type !== 'lifetime'">
+                    ¥{{ calculateAveragePrice(pkg.final_price, pkg.duration_days) }}/月
+                  </div>
+
+                  <!-- 优惠标签 -->
+                  <div class="price-save" v-if="pkg.discount_percentage > 0">
+                    <van-icon name="fire" size="10" />
+                    省{{ pkg.discount_percentage }}%
+                  </div>
                 </div>
               </div>
 
-              <!-- 平均价格 -->
-              <div class="package-average">
-                ¥{{ calculateAveragePrice(pkg.final_price, pkg.duration_days) }}/月
-              </div>
-
-              <!-- 优惠标签 -->
-              <div class="package-save" v-if="pkg.discount_percentage > 0">
-                <van-icon name="fire" size="12" />
-                省{{ pkg.discount_percentage }}%
+              <!-- 平台支持 - 新增 -->
+              <div class="item-platforms" v-if="pkg.platform && pkg.platform.length > 0">
+                <van-tag
+                  v-for="platform in pkg.platform"
+                  :key="platform"
+                  size="mini"
+                  type="primary"
+                  plain
+                >
+                  {{ platform === 'android' ? 'Android' : 'iOS' }}
+                </van-tag>
               </div>
 
               <!-- 选中标记 -->
-              <div class="package-check">
+              <div class="item-check">
                 <van-icon
                   :name="selectedPackage === pkg.id ? 'success' : 'circle'"
                   :color="selectedPackage === pkg.id ? '#ee0a24' : '#c8c9cc'"
-                  size="20"
+                  size="22"
                 />
               </div>
             </div>
@@ -120,7 +155,7 @@
           <van-empty v-else description="暂无套餐信息" />
         </div>
 
-        <!-- 会员权益 - 网格布局 -->
+        <!-- 会员权益 -->
         <div class="section">
           <h2 class="section-title">会员特权</h2>
           <div class="benefits-list">
@@ -139,7 +174,7 @@
       </van-pull-refresh>
     </div>
 
-    <!-- 底部购买栏 - 浮动设计 -->
+    <!-- 底部购买栏 -->
     <div class="bottom-purchase">
       <div class="purchase-info">
         <div class="info-label">合计</div>
@@ -215,18 +250,6 @@ const benefits = ref([
 
 // ===== 计算属性 =====
 
-// 根据套餐数量动态计算网格列数
-const gridStyle = computed(() => {
-  const count = packages.value.length
-  let columns = 3
-  if (count <= 2) columns = count
-  if (count >= 4) columns = count <= 6 ? 3 : 4
-
-  return {
-    'grid-template-columns': `repeat(${columns}, 1fr)`
-  }
-})
-
 // 当前选中的套餐信息
 const selectedPackageInfo = computed(() => {
   return packages.value.find(p => p.id === selectedPackage.value) || {}
@@ -248,7 +271,7 @@ const paymentOrderInfo = computed(() => {
   const result = [
     { label: '套餐编码', value: info.plan_code || '' },
     { label: '套餐', value: info.plan_name || '' },
-    { label: '时长', value: formatDuration(info.duration_days) || '' }
+    { label: '时长', value: formatDuration(info) || '' }
   ]
 
   if (info.base_price !== info.final_price) {
@@ -271,20 +294,37 @@ const paymentOrderInfo = computed(() => {
 
 // ===== 方法 =====
 
-// 格式化时长
-const formatDuration = (days) => {
-  if (!days) return '终身'
+// 格式化时长 - 优化版本，支持 plan_type
+const formatDuration = (pkg) => {
+  // 优先判断套餐类型
+  if (pkg.plan_type === 'lifetime') {
+    return '永久有效'
+  }
+
+  const days = pkg.duration_days
+  if (!days) return '永久有效'
+
+  // 精确匹配常见时长
+  if (days === 7) return '7天'
   if (days === 30) return '1个月'
   if (days === 90) return '3个月'
   if (days === 180) return '6个月'
   if (days === 365) return '12个月'
-  return `${Math.round(days / 30)}个月`
+
+  // 计算月数
+  if (days >= 30) {
+    const months = Math.round(days / 30)
+    return `${months}个月`
+  }
+
+  // 小于30天直接显示天数
+  return `${days}天`
 }
 
 // 计算平均每月价格
 const calculateAveragePrice = (price, days) => {
   if (!days) return price
-  const months = Math.round(days / 30)
+  const months = Math.max(1, Math.round(days / 30))
   return (price / months).toFixed(1)
 }
 
@@ -349,7 +389,7 @@ const onBuyConfirm = async (orderData) => {
     showSuccessToast('订单创建成功')
     paymentLoading.value = false
     // 跳转到支付页面
-     router.push({
+    router.push({
       path: '/order/pay',
       query: {orderId: orderData.orderId}
     })
@@ -369,25 +409,28 @@ const handlePaymentClose = () => {
 // 联系客服
 const contactService = () => {
   if (window.$customerService) {
-    window.$customerService.openModal()  // ✅ 只打开弹窗
+    window.$customerService.open()
+  } else {
+    showToast('客服功能暂未开放')
   }
 }
 
-// 返回上一页
+// 返回
 const onClickLeft = () => {
   router.back()
 }
 
-// ===== 隐藏/显示全局客服悬浮按钮 =====
+// 隐藏全局客服
 const hideGlobalCustomerService = () => {
   if (window.$customerService) {
-    window.$customerService.hide()  // ✅ 只隐藏悬浮按钮
+    window.$customerService.hide()
   }
 }
 
+// 显示全局客服
 const showGlobalCustomerService = () => {
   if (window.$customerService) {
-    window.$customerService.show()  // ✅ 只显示悬浮按钮，不打开弹窗
+    window.$customerService.show()
   }
 }
 
@@ -397,7 +440,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  showGlobalCustomerService()  // ✅ 现在只会显示悬浮按钮，不会打开弹窗
+  showGlobalCustomerService()
 })
 </script>
 
@@ -556,114 +599,192 @@ onBeforeUnmount(() => {
   border-radius: 4px;
 }
 
-/* 套餐网格 */
+/* ========== 套餐列表 - 优化后的垂直卡片样式 ========== */
 .packages-section {
   padding: 16px;
 }
 
-.packages-grid {
-  display: grid;
+.packages-list {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-.package-card {
+.package-item {
   position: relative;
   background: white;
   border: 2px solid #ebedf0;
-  border-radius: 12px;
-  padding: 16px 12px;
+  border-radius: 16px;
+  padding: 16px;
   cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+  transition: all 0.3s ease;
 }
 
-.package-card.active {
+.package-item.active {
   border-color: #ee0a24;
   background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
-  box-shadow: 0 4px 12px rgba(238, 10, 36, 0.15);
-  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(238, 10, 36, 0.15);
+  transform: scale(1.02);
 }
 
-.package-card.recommended {
+.package-item.recommended {
   border-color: #ff976a;
 }
 
-.card-corner {
+/* 推荐标签 */
+.item-badge {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 12px;
+  right: 12px;
   background: linear-gradient(135deg, #ee0a24, #ff6034);
   color: white;
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 0 10px 0 8px;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 12px;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 2px 8px rgba(238, 10, 36, 0.3);
 }
 
-.package-name {
-  font-size: 16px;
+/* 终身标签 */
+.lifetime-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #07c160, #38f);
+  color: white;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 2px 8px rgba(7, 193, 96, 0.3);
+}
+
+.package-item.recommended .lifetime-badge {
+  top: 40px;
+}
+
+/* 头部布局 */
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.item-info {
+  flex: 1;
+}
+
+.item-name {
+  font-size: 18px;
   font-weight: bold;
   color: #323233;
-  margin-bottom: 8px;
+  margin: 0 0 8px 0;
 }
 
-.package-duration {
-  font-size: 12px;
+.item-duration {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
   color: #969799;
-  margin-bottom: 4px;
+  margin-bottom: 12px;
 }
 
-.package-pricing {
-  margin-bottom: 4px;
+/* 套餐描述 - 新增 */
+.item-description {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.desc-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: #646566;
+  line-height: 1.6;
+}
+
+.desc-line .van-icon {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* 价格区域 */
+.item-pricing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .price-main {
   display: flex;
   align-items: baseline;
-  justify-content: center;
+  margin-bottom: 4px;
 }
 
 .currency {
-  font-size: 14px;
+  font-size: 16px;
   color: #ee0a24;
+  font-weight: 500;
 }
 
 .amount {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
   color: #ee0a24;
+  line-height: 1;
 }
 
 .price-original {
-  font-size: 11px;
+  font-size: 12px;
   color: #969799;
   text-decoration: line-through;
-  margin-top: 2px;
+  margin-bottom: 4px;
 }
 
-.package-average {
+.price-average {
   font-size: 11px;
   color: #969799;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
-.package-save {
-  display: flex;
+.price-save {
+  display: inline-flex;
   align-items: center;
   gap: 2px;
   font-size: 11px;
   color: #ee0a24;
   background: #fff1f0;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 10px;
-  margin-bottom: 8px;
 }
 
-.package-check {
-  margin-top: auto;
+/* 平台支持 - 新增 */
+.item-platforms {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed #ebedf0;
+}
+
+/* 选中标记 */
+.item-check {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
 }
 
 /* 权益列表 */
