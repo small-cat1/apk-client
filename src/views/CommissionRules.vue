@@ -90,7 +90,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/pinia'
 import {showToast, showDialog, showFailToast} from 'vant'
-import {getCommissionRules} from "@/api/commissionRules.js";
+import {getCommissionRules} from "@/api/commission";
 
 const router = useRouter()
 const userStore = useUserStore()

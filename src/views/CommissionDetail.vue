@@ -87,6 +87,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
+import { getCommissionDetail } from '@/api/commission'
 
 const router = useRouter()
 
@@ -116,15 +117,6 @@ const pageSize = ref(20)
 const totalCommission = ref(0)
 const totalOrders = ref(0)
 
-const fetchStats = async () => {
-  try {
-    // TODO: 调用API
-    totalCommission.value = 2580.30
-    totalOrders.value = 156
-  } catch (error) {
-    console.error('获取统计失败:', error)
-  }
-}
 
 const fetchList = async (isRefresh = false) => {
   try {
@@ -134,47 +126,44 @@ const fetchList = async (isRefresh = false) => {
       finished.value = false
     }
 
-    // TODO: 调用API
-    // const res = await api.getCommissionDetail({
-    //   page: page.value,
-    //   pageSize: pageSize.value,
-    //   type: filterType.value,
-    //   time: filterTime.value
-    // })
+    const res = await getCommissionDetail({
+      page: page.value,
+      pageSize: pageSize.value,
+      type: filterType.value,
+      time: filterTime.value
+    })
 
-    // 模拟数据
-    const mockData = Array.from({ length: pageSize.value }, (_, i) => ({
-      id: page.value * pageSize.value + i,
-      orderNo: `ORD${Date.now()}${i}`,
-      username: `用户${i + 1}`,
-      orderAmount: Math.random() * 500 + 50,
-      commissionRate: 0.1,
-      commission: (Math.random() * 500 + 50) * 0.1,
-      status: Math.random() > 0.3 ? 'settled' : 'pending',
-      createTime: new Date().getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000
-    }))
-
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    if (isRefresh) {
-      list.value = mockData
-    } else {
-      list.value = [...list.value, ...mockData]
+    if(res.code === 0){
+      const {
+        list: newList,           // 别名
+        total: totalRecords,     // 别名
+        stats: stats         // 别名
+      } = res.data
+      // ✅ 正确赋值
+      totalCommission.value = stats.totalCommission
+      totalOrders.value = stats.totalOrders
+      // ✅ 判断是否加载完成
+      if (newList.length === 0) {
+        finished.value = true
+      } else {
+        const totalPageSize = page.value * pageSize.value
+        if (totalRecords <= totalPageSize) {
+          finished.value = true
+        }
+        list.value.push(...newList)  // ✅ 使用 newList
+        page.value++
+      }
+      return
     }
-
-    page.value++
-
-    if (mockData.length < pageSize.value) {
-      finished.value = true
-    }
-
     loading.value = false
     refreshing.value = false
+    finished.value = true
   } catch (error) {
     console.error('获取列表失败:', error)
     showToast('加载失败')
     loading.value = false
     refreshing.value = false
+    finished.value = true
   }
 }
 
@@ -184,7 +173,6 @@ const onLoad = () => {
 
 const onRefresh = () => {
   fetchList(true)
-  fetchStats()
 }
 
 const onFilterChange = () => {
@@ -197,10 +185,7 @@ const formatDateTime = (timestamp) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-onMounted(() => {
-  fetchStats()
-  fetchList()
-})
+
 </script>
 
 <style scoped>

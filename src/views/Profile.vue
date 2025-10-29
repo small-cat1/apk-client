@@ -377,7 +377,7 @@ const goToCommissionDetail = () => {
 
 // 查看分佣规则
 const goToCommissionRules = () => {
-  router.push('/commissionDetail')
+  router.push('/commissionRules')
 }
 
 // 查看提现记录
@@ -396,12 +396,12 @@ const goToUserMemberships = () => {
 
 // 去订单页面
 const goToOrder = () => {
-  router.push('/order')
+  router.push('/orderList')
 }
 
 // 去VIP页面
 const goToVip = () => {
-  router.push('/vip')
+  router.push('/package')
 }
 
 // 去设置页面

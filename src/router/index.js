@@ -120,12 +120,14 @@ const routes = [
   {
     path: '/subordinateList',
     name: 'SubordinateList',
+    title: '下级用户',
     component: () => import('@/views/SubordinateList.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/commissionDetail',
     name: 'CommissionDetail',
+    title: '分佣明细',
     component: () => import('@/views/CommissionDetail.vue'),
     meta: { requiresAuth: true }
   },
@@ -160,7 +162,10 @@ const routes = [
     path: '/commissionRules',
     name: 'CommissionRules',
     component: () => import('@/views/CommissionRules.vue'),
-    meta: { requiresAuth: true, title: '分佣规则' }
+    meta: {
+      requiresAuth: true,
+      title: '分佣规则'
+    }
   },
   {
     path: '/:pathMatch(.*)*',  // ✅ 注意是 pathMatch
