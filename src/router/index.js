@@ -114,6 +114,7 @@ const routes = [
     path: '/commissionPage',
     name: 'CommissionPage',
     component: () => import('@/views/CommissionPage.vue'),
+    title: '关于我们',
     meta: { requiresAuth: true }
   },
   {
@@ -131,12 +132,14 @@ const routes = [
   {
     path: '/withdraw',
     name: 'Withdraw',
+    title: '用户提现',
     component: () => import('@/views/Withdraw.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/withdrawRecord',
     name: 'WithdrawRecord',
+    title: '提现记录',
     component: () => import('@/views/WithdrawRecord.vue'),
     meta: { requiresAuth: true }
   },

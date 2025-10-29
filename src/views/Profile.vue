@@ -41,7 +41,6 @@
             </div>
           </div>
 
-
         </template>
 
         <template v-else>
@@ -59,8 +58,9 @@
         </template>
 
       </div>
-      <!-- 【新增】系统公告卡片（位置1：用户信息下方） -->
-      <div  class="announcement-card">
+
+      <!-- 系统公告卡片 -->
+      <div class="announcement-card">
         <div class="announcement-header">
           <div class="header-left">
             <van-icon name="volume-o" color="#ff6b35" size="18" />
@@ -73,47 +73,25 @@
         </div>
       </div>
 
-      <!-- 推广邀请卡片（精简版） -->
+      <!-- ✅ 邀请推广卡片（简化版 - 点击直接显示二维码） -->
       <div v-if="userStore.token" class="invite-section">
         <van-cell-group inset>
-          <div class="invite-card-mini">
-            <div class="invite-header-mini">
+          <div class="invite-card-simple" @click="showQRCode">
+            <div class="invite-content">
               <div class="invite-title-mini">
                 <van-icon name="friends-o" size="18" color="#07c160" />
                 <span>邀请推广</span>
               </div>
-              <van-tag type="success" size="medium">赚佣金</van-tag>
+              <div class="invite-subtitle">点击查看推广二维码</div>
             </div>
-
-            <!-- 邀请码 -->
-            <div class="invite-code-mini">
-              <div class="code-left">
-                <span class="code-label-mini">邀请码</span>
-                <span class="code-value-mini">{{ userInfo.referral_code }}</span>
-              </div>
-              <div class="code-buttons">
-                <van-button
-                  size="mini"
-                  type="primary"
-                  plain
-                  icon="records"
-                  @click="copyInviteCode"
-                >
-                  复制
-                </van-button>
-                <van-button
-                  size="mini"
-                  type="success"
-                  icon="share-o"
-                  @click="shareInvite"
-                >
-                  分享
-                </van-button>
-              </div>
+            <div class="invite-right">
+              <van-tag type="success" size="medium">赚佣金</van-tag>
+              <van-icon name="arrow" size="16" color="#969799" />
             </div>
           </div>
         </van-cell-group>
       </div>
+
       <!-- 功能菜单 -->
       <div class="menu-section">
         <van-cell-group inset>
@@ -241,15 +219,55 @@
         </van-cell-group>
       </div>
     </div>
+
+    <!-- ✅ 二维码弹窗（简化版） -->
+    <van-popup
+      v-model:show="showQRCodePopup"
+      round
+      closeable
+      :style="{ padding: '30px 20px', width: '85%', maxWidth: '340px' }"
+    >
+      <div class="qrcode-popup">
+        <div class="qrcode-title">
+          <van-icon name="qrcode" size="24" color="#07c160" />
+          <span>推广二维码</span>
+        </div>
+
+        <div class="qrcode-desc">
+          分享此二维码给好友，好友扫码注册后<br />您即可获得推广收益
+        </div>
+
+        <div class="qrcode-container">
+          <canvas ref="qrcodeCanvas"></canvas>
+        </div>
+
+        <div class="qrcode-actions">
+          <van-button
+            type="primary"
+            block
+            round
+            icon="photo-o"
+            @click="downloadQRCode"
+          >
+            保存二维码图片
+          </van-button>
+        </div>
+
+        <div class="qrcode-tip">
+          长按二维码图片可以保存或分享给好友
+        </div>
+      </div>
+    </van-popup>
   </div>
 </template>
 
 <script setup>
-import {ref, computed, onMounted, watch, onUnmounted} from 'vue'
+import {ref, computed, onMounted, watch, onUnmounted, nextTick} from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/pinia'
 import { showDialog, showToast } from 'vant'
 import { emitter } from "@/utils/bus.js"
+import QRCode from 'qrcode'  // ✅ 引入二维码库
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -260,14 +278,66 @@ const membershipInfo = computed(() => userStore.membershipInfo)
 const referralCount = computed(() => userStore.referralCount)
 const commissionAvailable = computed(() => userStore.commissionAvailable)
 const commissionTotal = computed(() => userStore.commissionTotal)
+
 // 当前分佣比例
 const currentCommissionRate = ref(10)
 // 最低提现金额
 const minWithdrawAmount = ref(10)
 
+// ✅ 二维码相关
+const showQRCodePopup = ref(false)
+const qrcodeCanvas = ref(null)
+const inviteUrl = computed(() => {
+  // ✅ 生成邀请链接：当前域名 + ?inviteCode=xxx
+  return `${window.location.origin}?inviteCode=${userInfo.value.referral_code}`
+})
 
+// ✅ 显示二维码
+const showQRCode = async () => {
+  showQRCodePopup.value = true
 
-// 【新增】格式化时间
+  // 等待DOM渲染
+  await nextTick()
+
+  // 生成二维码
+  try {
+    await QRCode.toCanvas(qrcodeCanvas.value, inviteUrl.value, {
+      width: 260,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    })
+  } catch (error) {
+    console.error('生成二维码失败:', error)
+    showToast('生成二维码失败')
+  }
+}
+
+// ✅ 下载二维码
+const downloadQRCode = () => {
+  if (!qrcodeCanvas.value) return
+
+  try {
+    // 将 canvas 转换为图片并下载
+    const url = qrcodeCanvas.value.toDataURL('image/png')
+    const link = document.createElement('a')
+    link.download = `invite_qrcode_${userInfo.value.referral_code}.png`
+    link.href = url
+    link.click()
+
+    showToast({
+      message: '二维码已保存',
+      type: 'success'
+    })
+  } catch (error) {
+    console.error('下载二维码失败:', error)
+    showToast('下载失败，请重试')
+  }
+}
+
+// 格式化时间
 const formatTime = (timestamp) => {
   const now = new Date().getTime()
   const diff = now - timestamp
@@ -284,12 +354,12 @@ const formatTime = (timestamp) => {
   }
 }
 
-// 【新增】跳转到公告列表
+// 跳转到公告列表
 const goToAnnouncementList = () => {
   router.push('/announcementList')
 }
 
-// 【新增】跳转到公告详情
+// 跳转到公告详情
 const goToAnnouncementDetail = (item) => {
   router.push({
     path: '/announcementDetail',
@@ -297,71 +367,12 @@ const goToAnnouncementDetail = (item) => {
   })
 }
 
-
-
-
 // 获取当前分佣比例
 const fetchCommissionRate = async () => {
   try {
     currentCommissionRate.value = 10
   } catch (error) {
     console.error('获取分佣比例失败:', error)
-  }
-}
-// 复制邀请码
-const copyInviteCode = () => {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(userInfo.value.referral_code).then(() => {
-      showToast({
-        message: '邀请码已复制',
-        type: 'success'
-      })
-    }).catch(() => {
-      fallbackCopy(userInfo.value.referral_code)
-    })
-  } else {
-    fallbackCopy(userInfo.value.referral_code)
-  }
-}
-
-// 备用复制方法
-const fallbackCopy = (text) => {
-  const input = document.createElement('input')
-  input.value = text
-  document.body.appendChild(input)
-  input.select()
-  document.execCommand('copy')
-  document.body.removeChild(input)
-  showToast({
-    message: '已复制到剪贴板',
-    type: 'success'
-  })
-}
-
-// 分享邀请
-const shareInvite = () => {
-  const inviteUrl = `${window.location.origin}/register?code=${userInfo.value.referral_code}`
-  const shareText = `【推广赚钱】使用我的邀请码 ${userInfo.value.referral_code} 注册，一起赚取收益！注册链接：${inviteUrl}`
-
-  if (navigator.share) {
-    navigator.share({
-      title: '邀请好友注册',
-      text: shareText,
-      url: inviteUrl
-    }).then(() => {
-      showToast('分享成功')
-    }).catch((error) => {
-      if (error.name !== 'AbortError') {
-        fallbackCopy(shareText)
-      }
-    })
-  } else {
-    fallbackCopy(shareText)
-    showToast({
-      message: '推广链接已复制，快去分享吧！',
-      type: 'success',
-      duration: 3000
-    })
   }
 }
 
@@ -372,7 +383,7 @@ const goToCommissionPage = () => {
 
 // 去提现页面
 const goToWithdraw = () => {
-  if (commissionAvailable < minWithdrawAmount.value) {
+  if (commissionAvailable.value < minWithdrawAmount.value) {
     showToast(`最低提现金额为 ¥${minWithdrawAmount.value}`)
     return
   }
@@ -381,69 +392,81 @@ const goToWithdraw = () => {
 
 // 查看下级列表
 const goToSubordinateList = () => {
-  router.push('/subordinateList')
+  router.push('/user/subordinate')
 }
 
 // 查看分佣明细
 const goToCommissionDetail = () => {
-  router.push('/commissionDetail')
-}
-
-// 查看提现记录
-const goToWithdrawRecord = () => {
-  router.push('/withdrawRecord')
+  router.push('/user/commission/detail')
 }
 
 // 查看分佣规则
 const goToCommissionRules = () => {
-  router.push('/commissionRules')
-}
-const formatDate = (timestamp) => {
-  return new Date(timestamp).toLocaleDateString('zh-CN')
+  router.push('/user/commission/rules')
 }
 
+// 查看提现记录
+const goToWithdrawRecord = () => {
+  router.push('/user/withdraw/records')
+}
+
+// 查看会员权益
 const goToUserMemberships = () => {
-  if(hasMembership){
-    showToast("普通会员暂无权益！")
-    return
-  }
-  router.push('/userMemberships')
+  router.push('/user/memberships')
 }
 
+// 去订单页面
 const goToOrder = () => {
-  router.push('/orderList')
+  router.push('/order')
 }
 
+// 去VIP页面
 const goToVip = () => {
-  router.push('/package')
+  router.push('/vip')
 }
 
+// 去设置页面
 const goToSettings = () => {
   router.push('/settings')
 }
 
+// 去关于我们
 const goToAbout = () => {
   router.push('/about')
 }
 
+// 显示登录
 const showAuth = () => {
-  emitter.emit("show-login-modal")
+  emitter.emit('show-auth', { source: 'profile' })
 }
 
+// 格式化日期
+const formatDate = (date) => {
+  if (!date) return '永久'
+  const d = new Date(date)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// 退出登录
 const handleLogout = () => {
   showDialog({
-    title: '提示',
-    message: '确定要退出登录吗？'
+    title: '确认退出',
+    message: '确定要退出登录吗？',
+    showCancelButton: true,
+    confirmButtonText: '退出',
+    confirmButtonColor: '#ee0a24'
   }).then(() => {
-    userStore.LoginOut()
-    showToast({
-      message: '已退出登录',
-      type: 'success'
+    userStore.LoginOut().then(() => {
+      showToast({
+        message: '已退出登录',
+        type: 'success'
+      })
     })
   }).catch(() => {
     // 取消退出
   })
 }
+
 const handleAuthSuccess = (context) => {
   if (context?.source === 'download') {
     window.location.reload()
@@ -542,189 +565,58 @@ onUnmounted(() => {
   margin-right: 4px;
 }
 
-.vip-benefits {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.vip-benefits span {
-  font-size: 12px;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
 .vip-expire {
   font-size: 12px;
   opacity: 0.9;
 }
 
-/* 推广收益折叠区域 */
-.promotion-section {
+/* ✅ 邀请推广卡片（简化版） */
+.invite-section {
   margin: 12px 0;
 }
 
-.promotion-summary {
+.invite-card-simple {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background: linear-gradient(135deg, #fff9f0, #fff);
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.2s;
 }
 
-.promotion-summary:active {
-  background: #fff5eb;
-}
-
-.summary-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.summary-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.summary-title {
-  font-size: 14px;
-  color: #646566;
-}
-
-.summary-amount {
-  font-size: 20px;
-  font-weight: bold;
-  color: #ff6b35;
-}
-
-.summary-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toggle-icon {
-  color: #969799;
-  transition: transform 0.3s;
-}
-
-/* 折叠详情内容 */
-.commission-detail {
-  padding: 16px;
-  background: white;
-}
-
-.earnings-row {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 16px 0;
+.invite-card-simple:active {
   background: #f7f8fa;
-  border-radius: 8px;
-  margin-bottom: 12px;
 }
 
-.earning-item {
-  text-align: center;
+.invite-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #f0fff4, #e6f9ed);
+  border-radius: 12px;
+}
+
+.invite-content {
   flex: 1;
+  margin-left: 12px;
 }
 
-.earning-value {
-  font-size: 18px;
+.invite-title {
+  font-size: 15px;
   font-weight: bold;
   color: #323233;
   margin-bottom: 4px;
 }
 
-.earning-label {
+.invite-subtitle {
   font-size: 12px;
   color: #969799;
 }
 
-.earning-divider {
-  width: 1px;
-  height: 30px;
-  background: #ebedf0;
-}
-
-.today-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.today-item {
+.invite-right {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #f7f8fa;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #646566;
-}
-
-/* 邀请推广卡片 */
-/* 邀请推广卡片（精简版） */
-.invite-section {
-  margin: 12px 0;
-}
-
-.invite-card-mini {
-  padding: 12px 16px;
-}
-
-.invite-header-mini {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.invite-title-mini {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 15px;
-  font-weight: bold;
-  color: #323233;
-}
-
-.invite-code-mini {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  background: linear-gradient(135deg, #f0fff4, #fff);
-  border: 1px solid #07c160;
-  border-radius: 8px;
-}
-
-.code-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.code-label-mini {
-  font-size: 12px;
-  color: #969799;
-}
-
-.code-value-mini {
-  font-size: 16px;
-  font-weight: bold;
-  color: #07c160;
-  letter-spacing: 1px;
-}
-
-.code-buttons {
-  display: flex;
   gap: 8px;
 }
 
@@ -736,7 +628,7 @@ onUnmounted(() => {
   margin: 12px 0;
 }
 
-/* 【新增】公告卡片样式 */
+/* 公告卡片样式 */
 .announcement-card {
   margin: 12px;
   background: white;
@@ -768,55 +660,50 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.announcement-swipe {
-  min-height: 60px;
+/* ✅ 二维码弹窗样式（简化版） */
+.qrcode-popup {
+  text-align: center;
 }
 
-.announcement-item {
+.qrcode-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  cursor: pointer;
-}
-
-.announcement-badge {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
+  justify-content: center;
+  gap: 8px;
+  font-size: 18px;
   font-weight: bold;
-  color: white;
-}
-
-.announcement-badge.type-1 {
-  background: #ff4d4f;
-}
-
-.announcement-badge.type-2 {
-  background: #fa8c16;
-}
-
-.announcement-badge.type-3 {
-  background: #1890ff;
-}
-
-.announcement-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.announcement-title {
-  font-size: 14px;
   color: #323233;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-bottom: 4px;
+  margin-bottom: 12px;
 }
 
-.announcement-time {
+.qrcode-desc {
+  font-size: 13px;
+  color: #646566;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.qrcode-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: #f7f8fa;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.qrcode-container canvas {
+  display: block;
+}
+
+.qrcode-actions {
+  margin-bottom: 12px;
+}
+
+.qrcode-tip {
   font-size: 12px;
   color: #969799;
+  line-height: 1.5;
 }
 </style>

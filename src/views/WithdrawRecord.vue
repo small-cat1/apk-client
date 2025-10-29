@@ -51,7 +51,7 @@
                 <div class="item-info">
                   <div class="withdraw-type">{{ getWithdrawTypeText(item.withdrawType) }}</div>
                   <div class="withdraw-time">{{ formatDateTime(item.createTime) }}</div>
-                  <div class="withdraw-account">{{ formatAccount(item.account) }}</div>
+                  <div class="withdraw-account">{{ formatAccount(item.accountNo) }}</div>
                 </div>
               </div>
 

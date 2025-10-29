@@ -11,7 +11,7 @@
       <!-- 可提现金额 -->
       <div class="balance-card">
         <div class="balance-label">可提现金额（元）</div>
-        <div class="balance-amount">{{ availableAmount.toFixed(2) }}</div>
+        <div class="balance-amount">{{ commissionAvailable.toFixed(2) }}</div>
         <div class="balance-tip">
           最低提现 ¥{{ withdrawConfig.minWithdraw }}，最高单次提现 ¥{{ withdrawConfig.maxWithdraw }}
         </div>
@@ -164,9 +164,8 @@ const userStore = useUserStore()
 const userInfo = computed(() => userStore.userInfo || {})
 const minWithdrawAmount = computed(() => withdrawConfig.value?.minWithdraw || 0)
 const maxWithdrawAmount = computed(() => withdrawConfig.value?.maxWithdraw || 0)
-const availableAmount = computed(() => {
-  return userInfo.value?.commissionSimple?.available_amount || 0
-})
+const commissionAvailable = computed(() => userStore.commissionAvailable)
+
 // 提现配置
 const withdrawConfig = ref({
   minWithdraw: 0,
@@ -246,7 +245,7 @@ const validateAmount = (val) => {
     return false
   }
 
-  if (amount > availableAmount.value) {
+  if (amount > commissionAvailable.value) {
     amountError.value = '提现金额不能大于可提现金额'
     return false
   }
@@ -257,7 +256,7 @@ const validateAmount = (val) => {
 
 // ✅ 优化5：全部提现逻辑优化
 const setAllAmount = () => {
-  const available = availableAmount.value
+  const available = commissionAvailable.value
 
   if (available <= 0) {
     showToast('暂无可提现金额')
@@ -323,7 +322,11 @@ const onSubmit = async () => {
   if (!validateAccountInfo()) {
     return
   }
-
+// ✅ 构建请求数据，将 amount 转为数字
+  const requestData = {
+    ...formData.value,
+    amount: parseFloat(formData.value.amount)  // 转为数字
+  }
   // 确认对话框
   showDialog({
     title: '确认提现',
@@ -332,7 +335,7 @@ const onSubmit = async () => {
   }).then(async () => {
     try {
       submitting.value = true
-      const resp = await userWithdraw(formData.value)
+      const resp = await userWithdraw(requestData)
 
       if (resp.code === 0) {
         showToast({
@@ -341,7 +344,7 @@ const onSubmit = async () => {
         })
         // ✅ 优化：不刷新页面，更新状态后跳转
         setTimeout(async () => {
-          router.push('/user/withdraw/records')  // 跳转到提现记录
+          router.push('/withdrawRecord')  // 跳转到提现记录
         }, 1500)
         return
       }
