@@ -336,36 +336,11 @@ const downloadQRCode = () => {
     showToast('下载失败，请重试')
   }
 }
-
-// 格式化时间
-const formatTime = (timestamp) => {
-  const now = new Date().getTime()
-  const diff = now - timestamp
-
-  if (diff < 60 * 60 * 1000) {
-    return `${Math.floor(diff / (60 * 1000))}分钟前`
-  } else if (diff < 24 * 60 * 60 * 1000) {
-    return `${Math.floor(diff / (60 * 60 * 1000))}小时前`
-  } else if (diff < 7 * 24 * 60 * 60 * 1000) {
-    return `${Math.floor(diff / (24 * 60 * 60 * 1000))}天前`
-  } else {
-    const date = new Date(timestamp)
-    return `${date.getMonth() + 1}-${date.getDate()}`
-  }
-}
-
 // 跳转到公告列表
 const goToAnnouncementList = () => {
   router.push('/announcementList')
 }
 
-// 跳转到公告详情
-const goToAnnouncementDetail = (item) => {
-  router.push({
-    path: '/announcementDetail',
-    query: { id: item.id }
-  })
-}
 
 // 获取当前分佣比例
 const fetchCommissionRate = async () => {
@@ -392,27 +367,31 @@ const goToWithdraw = () => {
 
 // 查看下级列表
 const goToSubordinateList = () => {
-  router.push('/user/subordinate')
+  router.push('/subordinateList')
 }
 
 // 查看分佣明细
 const goToCommissionDetail = () => {
-  router.push('/user/commission/detail')
+  router.push('/commissionDetail')
 }
 
 // 查看分佣规则
 const goToCommissionRules = () => {
-  router.push('/user/commission/rules')
+  router.push('/commissionDetail')
 }
 
 // 查看提现记录
 const goToWithdrawRecord = () => {
-  router.push('/user/withdraw/records')
+  router.push('/withdrawRecord')
 }
 
 // 查看会员权益
 const goToUserMemberships = () => {
-  router.push('/user/memberships')
+  if(hasMembership){
+    showToast("普通会员暂无权益！")
+    return
+  }
+  router.push('/userMemberships')
 }
 
 // 去订单页面
