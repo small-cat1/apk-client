@@ -22,8 +22,8 @@
             <div class="user-details">
               <div class="username">{{ userInfo.username }}</div>
               <div class="user-level">
-                <van-tag :type="memberships > 0 ? 'success' : 'default'">
-                  {{ memberships > 0 ? 'VIP会员' : '普通用户' }}
+                <van-tag :type="hasMembership ? 'success' : 'default'">
+                  {{ hasMembership ? 'VIP会员' : '普通用户' }}
                 </van-tag>
               </div>
             </div>
@@ -31,13 +31,13 @@
           </div>
 
           <!-- VIP信息 -->
-          <div v-if="memberships > 0" class="vip-info">
+          <div v-if="hasMembership" class="vip-info">
             <div class="vip-title">
               <van-icon name="diamond-o" color="#ff6b35" />
               VIP特权
             </div>
             <div class="vip-expire">
-              到期时间：{{ formatDate(userInfo.vipExpireTime) }}
+              到期时间：{{ formatDate(membershipInfo.ExpireAt) }}
             </div>
           </div>
 
@@ -133,8 +133,8 @@
             @click="goToSubordinateList"
           >
             <template #value>
-              <van-tag v-if="inviteStats.totalSubordinates > 0" type="success">
-                {{ inviteStats.totalSubordinates }}人
+              <van-tag v-if="referralCount > 0" type="success">
+                {{ referralCount }}人
               </van-tag>
             </template>
           </van-cell>
@@ -146,7 +146,7 @@
             @click="goToCommissionDetail"
           >
             <template #value>
-              <span style="color: #ff6b35;">¥{{ commissionData.totalEarnings.toFixed(2) }}</span>
+              <span style="color: #ff6b35;">¥{{ commissionTotal.toFixed(2) }}</span>
             </template>
           </van-cell>
           <van-cell
@@ -157,7 +157,7 @@
             @click="goToWithdraw"
           >
             <template #value>
-              <span style="color: #07c160;">¥{{ userInfo.commissionSimple.available_amount.toFixed(2) }}</span>
+              <span style="color: #07c160;">¥{{ commissionAvailable.toFixed(2) }}</span>
             </template>
           </van-cell>
 
@@ -255,81 +255,17 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const userInfo = computed(() => userStore.userInfo || {})
-const memberships = computed(() => userStore.userInfo.memberships.length || 0)
+const hasMembership = computed(() => userStore.hasMembership)
+const membershipInfo = computed(() => userStore.membershipInfo)
+const referralCount = computed(() => userStore.referralCount)
+const commissionAvailable = computed(() => userStore.commissionAvailable)
+const commissionTotal = computed(() => userStore.commissionTotal)
 // 当前分佣比例
 const currentCommissionRate = ref(10)
 // 最低提现金额
 const minWithdrawAmount = ref(10)
 
 
-
-// 分佣数据
-const commissionData = ref({
-  totalEarnings: 0,
-  withdrawnAmount: 0,
-  frozenAmount: 0
-})
-
-// 邀请统计数据
-const inviteStats = ref({
-  totalSubordinates: 0,
-  todayConsumption: 0,
-  todayCommission: 0,
-  monthCommission: 0
-})
-// 【新增】公告相关数据
-const latestAnnouncements = ref([])
-const unreadAnnouncementCount = ref(0)
-
-// 【新增】获取最新公告（首页显示3条）
-const fetchLatestAnnouncements = async () => {
-  try {
-    // TODO: 调用后端API
-    // const res = await api.getLatestAnnouncements({ limit: 3 })
-    // latestAnnouncements.value = res.data.list
-    // unreadAnnouncementCount.value = res.data.unreadCount
-
-    // 示例数据
-    latestAnnouncements.value = [
-      {
-        id: 1,
-        title: '分佣规则将于3天后调整，请及时查看',
-        type: 2, // 1=紧急，2=重要，3=普通
-        createdAt: new Date().getTime() - 2 * 60 * 60 * 1000,
-        isRead: false
-      },
-      {
-        id: 2,
-        title: 'VIP会员权益升级通知',
-        type: 3,
-        createdAt: new Date().getTime() - 24 * 60 * 60 * 1000,
-        isRead: true
-      },
-      {
-        id: 3,
-        title: '系统维护通知：今晚22:00-24:00',
-        type: 1,
-        createdAt: new Date().getTime() - 3 * 60 * 60 * 1000,
-        isRead: false
-      }
-    ]
-    unreadAnnouncementCount.value = 2
-
-  } catch (error) {
-    console.error('获取公告失败:', error)
-  }
-
-}
-
-// 【新增】获取公告类型文本
-const getTypeText = (type) => {
-  const map = {
-    1: '紧急',
-    2: '重要',
-    3: '通知'
-  }
-  return map[type] || '通知'
-}
 
 // 【新增】格式化时间
 const formatTime = (timestamp) => {
@@ -362,43 +298,7 @@ const goToAnnouncementDetail = (item) => {
 }
 
 
-// 获取分佣数据
-const fetchCommissionData = async () => {
-  try {
-    // TODO: 调用后端API
-    // const res = await api.getCommissionData()
-    // commissionData.value = res.data
 
-    // 示例数据
-    commissionData.value = {
-      availableAmount: 158.50,
-      totalEarnings: 2580.30,
-      withdrawnAmount: 2400.00,
-      frozenAmount: 21.80
-    }
-  } catch (error) {
-    console.error('获取分佣数据失败:', error)
-  }
-}
-
-// 获取邀请统计
-const fetchInviteStats = async () => {
-  try {
-    // TODO: 调用后端API
-    // const res = await api.getInviteStats()
-    // inviteStats.value = res.data
-
-    // 示例数据
-    inviteStats.value = {
-      totalSubordinates: 48,
-      todayConsumption: 235.60,
-      todayCommission: 23.56,
-      monthCommission: 580.30
-    }
-  } catch (error) {
-    console.error('获取邀请统计失败:', error)
-  }
-}
 
 // 获取当前分佣比例
 const fetchCommissionRate = async () => {
@@ -472,8 +372,7 @@ const goToCommissionPage = () => {
 
 // 去提现页面
 const goToWithdraw = () => {
-  let commissionSimple = userInfo.value.commissionSimple
-  if (commissionSimple.available_amount < minWithdrawAmount.value) {
+  if (commissionAvailable < minWithdrawAmount.value) {
     showToast(`最低提现金额为 ¥${minWithdrawAmount.value}`)
     return
   }
@@ -504,7 +403,7 @@ const formatDate = (timestamp) => {
 }
 
 const goToUserMemberships = () => {
-  if(userInfo.value.memberships?.length === 0){
+  if(hasMembership){
     showToast("普通会员暂无权益！")
     return
   }
@@ -553,10 +452,7 @@ const handleAuthSuccess = (context) => {
 
 onMounted(() => {
   if (userStore.token) {
-    fetchCommissionData()
-    fetchInviteStats()
     fetchCommissionRate()
-    fetchLatestAnnouncements() // 【新增】获取公告
     emitter.on('auth-success', handleAuthSuccess)
   }
 })

@@ -3,7 +3,7 @@ import service from '@/utils/request'
 // 用户提现申请
 export const userWithdraw = (data) => {
   return service({
-    url: '/user/withdraw',
+    url: '/withdraw',
     method: 'post',
     data
   })
@@ -11,10 +11,20 @@ export const userWithdraw = (data) => {
 
 
 
-// 用户提现申请
+// 获取提现配置
 export const getWithdrawConfig = () => {
   return service({
-    url: '/user/withdraw-config',
+    url: '/withdraw/config',
     method: 'get',
+  })
+}
+
+
+// 获取用户提现记录列表
+export const getWithdrawRecords = (params) => {
+  return service({
+    url: '/withdraw/records',
+    method: 'get',
+    params
   })
 }

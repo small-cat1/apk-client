@@ -11,7 +11,7 @@
       <!-- 可提现金额 -->
       <div class="balance-card">
         <div class="balance-label">可提现金额（元）</div>
-        <div class="balance-amount">{{ userInfo.commissionSimple.available_amount.toFixed(2) }}</div>
+        <div class="balance-amount">{{ availableAmount.toFixed(2) }}</div>
         <div class="balance-tip">
           最低提现 ¥{{ withdrawConfig.minWithdraw }}，最高单次提现 ¥{{ withdrawConfig.maxWithdraw }}
         </div>
@@ -161,10 +161,12 @@ import {getWithdrawConfig, userWithdraw} from "@/api/withdraw"
 const router = useRouter()
 const userStore = useUserStore()
 
-const userInfo = userStore.userInfo
+const userInfo = computed(() => userStore.userInfo || {})
 const minWithdrawAmount = computed(() => withdrawConfig.value?.minWithdraw || 0)
 const maxWithdrawAmount = computed(() => withdrawConfig.value?.maxWithdraw || 0)
-
+const availableAmount = computed(() => {
+  return userInfo.value?.commissionSimple?.available_amount || 0
+})
 // 提现配置
 const withdrawConfig = ref({
   minWithdraw: 0,
@@ -189,9 +191,11 @@ const formData = ref({
   bankAccount: '',
   bankHolder: ''
 })
-
+const amountError = ref('')
 const submitting = ref(false)
 const showWithdrawTypePicker = ref(false)
+
+
 // 所有提现方式
 const allWithdrawTypes = [
   { text: '支付宝', value: 'alipay' },
@@ -199,15 +203,80 @@ const allWithdrawTypes = [
   { text: '银行卡', value: 'bank' }
 ]
 const withdrawTypeColumns = computed(() => {
-  if (!withdrawConfig.value || !withdrawConfig.value.withdrawMethods) {
+  if (!withdrawConfig.value?.withdrawMethods) {
     return []
   }
   return allWithdrawTypes.filter(item =>
     withdrawConfig.value.withdrawMethods.includes(item.value)
   )
 })
+const withdrawTypeText = computed(() => {
+  const type = withdrawTypeColumns.value.find(
+    item => item.value === formData.value.withdrawType
+  )
+  return type ? type.text : ''
+})
+// ✅ 优化6：重置账户字段
+const resetAccountFields = () => {
+  formData.value.alipayAccount = ''
+  formData.value.alipayName = ''
+  formData.value.wechatAccount = ''
+  formData.value.wechatName = ''
+  formData.value.bankName = ''
+  formData.value.bankAccount = ''
+  formData.value.bankHolder = ''
+}
 
-// 添加打开函数
+// ✅ 优化4：改进验证逻辑（不弹toast）
+const validateAmount = (val) => {
+  const amount = parseFloat(val)
+
+  if (!val || isNaN(amount) || amount <= 0) {
+    amountError.value = '请输入有效金额'
+    return false
+  }
+
+  if (amount < minWithdrawAmount.value) {
+    amountError.value = `最低提现金额为 ¥${minWithdrawAmount.value}`
+    return false
+  }
+
+  if (amount > maxWithdrawAmount.value) {
+    amountError.value = `单次最高提现金额为 ¥${maxWithdrawAmount.value}`
+    return false
+  }
+
+  if (amount > availableAmount.value) {
+    amountError.value = '提现金额不能大于可提现金额'
+    return false
+  }
+
+  amountError.value = ''
+  return true
+}
+
+// ✅ 优化5：全部提现逻辑优化
+const setAllAmount = () => {
+  const available = availableAmount.value
+
+  if (available <= 0) {
+    showToast('暂无可提现金额')
+    return
+  }
+
+  if (available > maxWithdrawAmount.value) {
+    formData.value.amount = maxWithdrawAmount.value.toString()
+    showToast(`已设置为最大提现金额 ¥${maxWithdrawAmount.value}`)
+  } else if (available < minWithdrawAmount.value) {
+    showToast(`可提现金额不足最低提现金额 ¥${minWithdrawAmount.value}`)
+  } else {
+    formData.value.amount = available.toString()
+  }
+  // 触发验证
+  validateAmount(formData.value.amount)
+}
+
+
 const openWithdrawTypePicker = () => {
   if (withdrawTypeColumns.value.length === 0) {
     showToast('暂无可用的提现方式')
@@ -219,66 +288,43 @@ const openWithdrawTypePicker = () => {
 const closeWithdrawTypePicker = () => {
   showWithdrawTypePicker.value = false
 }
-
-const withdrawTypeText = computed(() => {
-  const type = withdrawTypeColumns.value.find(item => item.value === formData.value.withdrawType)
-  return type ? type.text : ''
-})
-
-const validateAmount = (val) => {
-  const amount = parseFloat(val)
-  if (isNaN(amount)) {
-    return false
-  }
-  if (amount < minWithdrawAmount.value) {
-    showToast(`最低提现金额为 ¥${minWithdrawAmount.value}`)
-    return false
-  }
-  if (amount > maxWithdrawAmount.value) {
-    showToast(`单次最高提现金额为 ¥${maxWithdrawAmount.value}`)
-    return false
-  }
-  if (amount > userInfo.commissionSimple.available_amount) {
-    showToast('提现金额不能大于可提现金额')
-    return false
-  }
-  return true
-}
-
-const setAllAmount = () => {
-  let available_amount = userInfo.commissionSimple.available_amount
-  if (available_amount > maxWithdrawAmount.value) {
-    formData.value.amount = maxWithdrawAmount.value.toString()
-    showToast(`已设置为最大提现金额 ¥${maxWithdrawAmount.value}`)
-  } else {
-    formData.value.amount =available_amount.toString()
-  }
-}
-
 // 修复：Vant 4 的 Picker 组件 confirm 事件参数格式
+// ✅ 优化7：Picker确认处理（兼容Vant 4）
 const onWithdrawTypeConfirm = (value) => {
-  const selectedType = value.selectedValues[0]
-
-  // 切换提现方式时清理之前填写的数据
-  formData.value.alipayAccount = ''
-  formData.value.alipayName = ''
-  formData.value.wechatAccount = ''
-  formData.value.wechatName = ''
-  formData.value.bankName = ''
-  formData.value.bankAccount = ''
-  formData.value.bankHolder = ''
+  // 兼容 Vant 3 和 Vant 4
+  const selectedType = value.selectedValues?.[0] || value.selectedOptions?.[0]?.value
+  if (!selectedType) {
+    showToast('请选择提现方式')
+    return
+  }
+  // 切换提现方式时清理数据
+  resetAccountFields()
 
   // 设置新的提现方式
   formData.value.withdrawType = selectedType
   showWithdrawTypePicker.value = false
 }
 
+// ✅ 优化8：提交处理优化
 const onSubmit = async () => {
+  // 验证金额
+  if (!validateAmount(formData.value.amount)) {
+    showToast(amountError.value || '请检查提现金额')
+    return
+  }
+
+  // 验证提现方式
   if (!formData.value.withdrawType) {
     showToast('请选择提现方式')
     return
   }
 
+  // 验证账户信息
+  if (!validateAccountInfo()) {
+    return
+  }
+
+  // 确认对话框
   showDialog({
     title: '确认提现',
     message: `确认提现 ¥${formData.value.amount} 到${withdrawTypeText.value}吗？`,
@@ -286,31 +332,74 @@ const onSubmit = async () => {
   }).then(async () => {
     try {
       submitting.value = true
-      let resp = await userWithdraw(formData.value)
-      if (resp.code === 0){
-          showToast({
-            message: '提现申请已提交',
-            type: 'success'
-          })
-          setTimeout(() => {
-            window.location.reload()
-          }, 1500)
+      const resp = await userWithdraw(formData.value)
+
+      if (resp.code === 0) {
+        showToast({
+          message: '提现申请已提交',
+          type: 'success'
+        })
+        // ✅ 优化：不刷新页面，更新状态后跳转
+        setTimeout(async () => {
+          router.push('/user/withdraw/records')  // 跳转到提现记录
+        }, 1500)
         return
       }
+
       showFailToast(resp.msg || "提现申请失败")
     } catch (error) {
       console.error('提现失败:', error)
-      showToast('提现申请失败，请重试')
+      showFailToast(error.message || '提现申请失败，请重试')
     } finally {
       submitting.value = false
     }
   }).catch(() => {
-    // 取消
+    // 取消操作
   })
 }
+
+
+// ✅ 新增：验证账户信息
+const validateAccountInfo = () => {
+  const { withdrawType } = formData.value
+
+  if (withdrawType === 'alipay') {
+    if (!formData.value.alipayAccount) {
+      showToast('请输入支付宝账号')
+      return false
+    }
+    if (!formData.value.alipayName) {
+      showToast('请输入支付宝实名姓名')
+      return false
+    }
+  } else if (withdrawType === 'wechat') {
+    if (!formData.value.wechatAccount) {
+      showToast('请输入微信账号')
+      return false
+    }
+    if (!formData.value.wechatName) {
+      showToast('请输入微信实名姓名')
+      return false
+    }
+  } else if (withdrawType === 'bank') {
+    if (!formData.value.bankName) {
+      showToast('请输入开户银行')
+      return false
+    }
+    if (!formData.value.bankAccount) {
+      showToast('请输入银行卡号')
+      return false
+    }
+    if (!formData.value.bankHolder) {
+      showToast('请输入持卡人姓名')
+      return false
+    }
+  }
+  return true
+}
+
 // 获取提现配置
 const loadWithdrawConfig = async () => {
-  configLoading.value = true
   const toast = showLoadingToast({
     message: '加载配置中...',
     forbidClick: true,
@@ -320,15 +409,14 @@ const loadWithdrawConfig = async () => {
   try {
     const res = await getWithdrawConfig()
     if (res.code === 0 && res.data) {
-      withdrawConfig.value = {...res.data }
-      // minWithdrawAmount.value = res.data.minWithdraw || 10
-      // maxWithdrawAmount.value = res.data.maxWithdraw || 5000
+      withdrawConfig.value = { ...res.data }
+    } else {
+      showToast('获取配置失败，使用默认配置')
     }
   } catch (error) {
     console.error('获取提现配置失败:', error)
-    showToast('获取配置失败，使用默认配置')
+    showToast('获取配置失败，请刷新重试')
   } finally {
-    configLoading.value = false
     toast.close()
   }
 }

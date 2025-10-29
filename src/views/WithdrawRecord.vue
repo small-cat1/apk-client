@@ -117,6 +117,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
+import {getWithdrawRecords} from "@/api/withdraw.js";
 
 const router = useRouter()
 
@@ -150,16 +151,6 @@ const totalCount = ref(0)
 const showDetailPopup = ref(false)
 const currentDetail = ref(null)
 
-const fetchStats = async () => {
-  try {
-    // TODO: 调用API
-    totalWithdrawn.value = 2400.00
-    totalCount.value = 18
-  } catch (error) {
-    console.error('获取统计失败:', error)
-  }
-}
-
 const fetchList = async (isRefresh = false) => {
   try {
     if (isRefresh) {
@@ -167,52 +158,45 @@ const fetchList = async (isRefresh = false) => {
       list.value = []
       finished.value = false
     }
-
     // TODO: 调用API
-    // const res = await api.getWithdrawRecords({
-    //   page: page.value,
-    //   pageSize: pageSize.value,
-    //   status: filterStatus.value,
-    //   time: filterTime.value
-    // })
+    const res = await getWithdrawRecords({
+      page: page.value,
+      pageSize: pageSize.value,
+      status: filterStatus.value,
+      time: filterTime.value
+    })
+    if(res.code === 0){
+      // ✅ 使用别名避免变量名冲突
+      const {
+        list: newList,           // 别名
+        total: totalRecords,     // 别名
+        totalWithdrawn: withdrawn, // 别名
+        totalCount: count         // 别名
+      } = res.data
+      // ✅ 正确赋值
+      totalWithdrawn.value = withdrawn
+      totalCount.value = count
 
-    // 模拟数据
-    const statuses = ['pending', 'success', 'rejected']
-    const types = ['alipay', 'wechat', 'bank']
-
-    const mockData = Array.from({ length: pageSize.value }, (_, i) => ({
-      id: page.value * pageSize.value + i,
-      orderNo: `WD${Date.now()}${i}`,
-      amount: Math.random() * 500 + 50,
-      withdrawType: types[Math.floor(Math.random() * types.length)],
-      account: '138****5678',
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      createTime: new Date().getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000,
-      finishTime: Math.random() > 0.5 ? new Date().getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000 : null,
-      remark: Math.random() > 0.7 ? '审核通过，已到账' : ''
-    }))
-
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    if (isRefresh) {
-      list.value = mockData
-    } else {
-      list.value = [...list.value, ...mockData]
+      // ✅ 判断是否加载完成
+      if (newList.length === 0) {
+        finished.value = true
+      } else {
+        const totalPageSize = page.value * pageSize.value
+        if (totalRecords <= totalPageSize) {
+          finished.value = true
+        }
+        list.value.push(...newList)  // ✅ 使用 newList
+        page.value++
+      }
+      return
     }
-
-    page.value++
-
-    if (mockData.length < pageSize.value) {
-      finished.value = true
-    }
-
-    loading.value = false
-    refreshing.value = false
+    finished.value = true
   } catch (error) {
     console.error('获取列表失败:', error)
     showToast('加载失败')
     loading.value = false
     refreshing.value = false
+    finished.value = true
   }
 }
 
@@ -222,7 +206,6 @@ const onLoad = () => {
 
 const onRefresh = () => {
   fetchList(true)
-  fetchStats()
 }
 
 const onFilterChange = () => {
@@ -285,10 +268,7 @@ const formatDateTime = (timestamp) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-onMounted(() => {
-  fetchStats()
-  fetchList()
-})
+
 </script>
 
 <style scoped>

@@ -32,7 +32,7 @@ export const getCategoryApps = (params) => {
 // 根据分类获取账号应用
 export const getAccountAppListByCategory = (params) => {
   return service({
-    url: '/categories/account/apps',
+    url: '/accounts/apps',
     method: 'get',
     params
   })
