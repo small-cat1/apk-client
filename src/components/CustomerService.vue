@@ -276,6 +276,12 @@ const sendEmail = () => {
 const openIM = () => {
   if (!config.value || !config.value.contacts?.im) return
 
+  const imLink = config.value.imLink
+  // 🎯 移动端直接打开链接
+    if (imLink) {
+      window.open(imLink, '_blank')  // 或者用 window.location.href = imLink
+      return
+    }
   const imType = config.value.imType
   const imConfig = config.value.imConfig || {}
 
@@ -313,6 +319,10 @@ const openIM = () => {
       break
   }
 }
+
+
+
+
 
 // 加载美洽SDK
 const loadMeiqia = (token) => {
